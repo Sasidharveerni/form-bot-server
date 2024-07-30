@@ -198,10 +198,10 @@ router.delete('/delete-flow/:flowId', async (req, res) => {
     const deletedFlow = await ConversationFlow.findByIdAndDelete(flowId);
 
     if (!deletedFlow) {
-      return res.status(404).json({ message: 'Flow not found' });
+      return res.status(404).json({status: 'Failed', message: 'Flow not found' });
     }
 
-    res.json({ message: 'Flow deleted successfully', flow: deletedFlow });
+    res.json({status: 'Success', message: 'Flow deleted successfully', flow: deletedFlow });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting flow', error: error.message });
   }
