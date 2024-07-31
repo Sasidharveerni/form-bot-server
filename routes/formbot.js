@@ -89,14 +89,23 @@ router.post('/create-folder', async (req, res) => {
   }
 });
 
-router.get('/get-folders', async (req, res) => {
+router.get('/get-folders/:creatorId', async (req, res) => {
+  const { creatorId } = req.params;
+
+  if (!creatorId) {
+    return res.status(400).json({
+      status: 'Failed',
+      message: 'Creator ID is required'
+    });
+  }
+
   try {
-    const folders = await Folder.find().populate('forms'); // Populate the forms field if needed
+    const folders = await Folder.find({ creator: creatorId }).populate('forms'); // Filter by creatorId and populate forms
 
     if (!folders || folders.length === 0) {
       return res.status(404).json({
         status: 'Failed',
-        message: 'No folders found. Create a folder first.'
+        message: 'No folders found for this creator. Create a folder first.'
       });
     }
 
@@ -112,6 +121,7 @@ router.get('/get-folders', async (req, res) => {
     });
   }
 });
+
 
 // Create a flow
 router.post('/create-flow', async (req, res) => {
@@ -186,6 +196,58 @@ router.put('/update-flow/:flowId', async (req, res) => {
   } catch (error) {
     console.error('Error updating flow:', error);
     res.status(500).json({ message: 'Error updating flow', error: error.message });
+  }
+});
+
+
+router.post('/post-response/:flowId', async (req, res) => {
+  try {
+    const { flowId } = req.params;
+    const { updatedSteps } = req.body;
+
+    // Parse the updatedSteps from the form-urlencoded data
+    let parsedUpdatedSteps;
+    if (typeof updatedSteps === 'string') {
+      try {
+        parsedUpdatedSteps = JSON.parse(updatedSteps);
+      } catch (error) {
+        return res.status(400).json({ message: 'Invalid steps JSON', error: error.message });
+      }
+    } else {
+      parsedUpdatedSteps = updatedSteps;
+    }
+
+    // Ensure parsedUpdatedSteps is an array
+    if (!Array.isArray(parsedUpdatedSteps)) {
+      throw new Error('updatedSteps should be an array');
+    }
+
+    // Parse and create humanResponse objects
+    const humanResponses = parsedUpdatedSteps.map(step => ({
+      step: step,
+      updatedAt: Date.now()
+    }));
+
+    // Update the document by pushing the humanResponses
+    const updatedFlow = await ConversationFlow.findByIdAndUpdate(
+      flowId,
+      { 
+        $push: { humanResponses: { $each: humanResponses } }, 
+        updatedAt: Date.now() 
+      },
+      { new: true, runValidators: true }
+    );
+
+    res.json({
+      status: 'Success',
+      message: 'Response recorded successfully',
+      data: updatedFlow
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: 'Failed',
+      error: error.message
+    });
   }
 });
 

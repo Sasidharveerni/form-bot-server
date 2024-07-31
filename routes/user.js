@@ -104,7 +104,8 @@ router.patch('/update/:userId', verifyToken, async (req, res) => {
 router.post('/login/status', verifyToken, async (req, res) => {
     try {
         const {email} = req.body
-        const existingUser = await user.findOne(email)
+        console.log(email)
+        const existingUser = await user.findOne({email})
         console.log(existingUser)
         if(existingUser) {
             res.status(200).json({
